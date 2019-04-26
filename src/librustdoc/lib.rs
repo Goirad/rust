@@ -354,6 +354,18 @@ fn opts() -> Vec<RustcOptGroup> {
                       "show-coverage",
                       "calculate percentage of public items with documentation")
         }),
+        stable("runtool", |o| {
+            o.optopt("",
+                     "runtool",
+                     "",
+                     "The tool to run tests with when building for a different target than host")
+        }),
+        stable("runtool-arg", |o| {
+            o.optmulti("",
+                       "runtool-arg",
+                       "",
+                       "Argument to pass to the runtool, can be passed more than once for multiple arguments")
+        }),
     ]
 }
 

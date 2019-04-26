@@ -251,7 +251,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                 ))
             });
 
-            let tooltip = if ignore {
+            let tooltip = if ignore != Ignore::None {
                 Some(("This example is not tested".to_owned(), "ignore"))
             } else if compile_fail {
                 Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
@@ -265,7 +265,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                 s.push_str(&highlight::render_with_highlighting(
                     &text,
                     Some(&format!("rust-example-rendered{}",
-                                  if ignore { " ignore" }
+                                  if ignore != Ignore::None { " ignore" }
                                   else if compile_fail { " compile_fail" }
                                   else if explicit_edition { " edition " }
                                   else { "" })),
@@ -276,7 +276,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                 s.push_str(&highlight::render_with_highlighting(
                     &text,
                     Some(&format!("rust-example-rendered{}",
-                                  if ignore { " ignore" }
+                                  if ignore != Ignore::None { " ignore" }
                                   else if compile_fail { " compile_fail" }
                                   else if explicit_edition { " edition " }
                                   else { "" })),
@@ -587,7 +587,7 @@ pub struct LangString {
     original: String,
     pub should_panic: bool,
     pub no_run: bool,
-    pub ignore: bool,
+    pub ignore: Ignore,
     pub rust: bool,
     pub test_harness: bool,
     pub compile_fail: bool,
@@ -596,13 +596,20 @@ pub struct LangString {
     pub edition: Option<Edition>
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub enum Ignore {
+    All,
+    None,
+    Some(Vec<String>),
+}
+
 impl LangString {
     fn all_false() -> LangString {
         LangString {
             original: String::new(),
             should_panic: false,
             no_run: false,
-            ignore: false,
+            ignore: Ignore::None,
             rust: true,  // NB This used to be `notrust = false`
             test_harness: false,
             compile_fail: false,
@@ -617,6 +624,7 @@ impl LangString {
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
+        let mut ignores = vec![];
 
         data.original = string.to_owned();
         let tokens = string.split(|c: char|
@@ -631,7 +639,11 @@ impl LangString {
                     seen_rust_tags = seen_other_tags == false;
                 }
                 "no_run" => { data.no_run = true; seen_rust_tags = !seen_other_tags; }
-                "ignore" => { data.ignore = true; seen_rust_tags = !seen_other_tags; }
+                "ignore" => { data.ignore = Ignore::All; seen_rust_tags = !seen_other_tags; }
+                x if x.starts_with("ignore-") => {
+                    ignores.push(x.trim_start_matches("ignore-").to_owned());
+                    seen_rust_tags = !seen_other_tags;
+                }
                 "allow_fail" => { data.allow_fail = true; seen_rust_tags = !seen_other_tags; }
                 "rust" => { data.rust = true; seen_rust_tags = true; }
                 "test_harness" => {
@@ -658,6 +670,16 @@ impl LangString {
                 }
                 _ => { seen_other_tags = true }
             }
+        }
+
+        match data.ignore {
+            Ignore::All => {},
+            Ignore::None => {
+                if !ignores.is_empty() {
+                    data.ignore = Ignore::Some(ignores);
+                }
+            },
+            _ => unreachable!(),
         }
 
         data.rust &= !seen_other_tags || seen_rust_tags;
@@ -1051,7 +1073,7 @@ fn test_unique_id() {
 
 #[cfg(test)]
 mod tests {
-    use super::{ErrorCodes, LangString, Markdown, MarkdownHtml, IdMap};
+    use super::{ErrorCodes, LangString, Markdown, MarkdownHtml, IdMap, Ignore};
     use super::plain_summary_line;
     use std::cell::RefCell;
     use syntax::edition::{Edition, DEFAULT_EDITION};
@@ -1059,7 +1081,7 @@ mod tests {
     #[test]
     fn test_lang_string_parse() {
         fn t(s: &str,
-            should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
+            should_panic: bool, no_run: bool, ignore: Ignore, rust: bool, test_harness: bool,
             compile_fail: bool, allow_fail: bool, error_codes: Vec<String>,
              edition: Option<Edition>) {
             assert_eq!(LangString::parse(s, ErrorCodes::Yes), LangString {
@@ -1083,23 +1105,23 @@ mod tests {
         // ignore-tidy-linelength
         // marker                | should_panic | no_run | ignore | rust | test_harness
         //                       | compile_fail | allow_fail | error_codes | edition
-        t("",                      false,         false,   false,   true,  false, false, false, v(), None);
-        t("rust",                  false,         false,   false,   true,  false, false, false, v(), None);
-        t("sh",                    false,         false,   false,   false, false, false, false, v(), None);
-        t("ignore",                false,         false,   true,    true,  false, false, false, v(), None);
-        t("should_panic",          true,          false,   false,   true,  false, false, false, v(), None);
-        t("no_run",                false,         true,    false,   true,  false, false, false, v(), None);
-        t("test_harness",          false,         false,   false,   true,  true,  false, false, v(), None);
-        t("compile_fail",          false,         true,    false,   true,  false, true,  false, v(), None);
-        t("allow_fail",            false,         false,   false,   true,  false, false, true,  v(), None);
-        t("{.no_run .example}",    false,         true,    false,   true,  false, false, false, v(), None);
-        t("{.sh .should_panic}",   true,          false,   false,   false, false, false, false, v(), None);
-        t("{.example .rust}",      false,         false,   false,   true,  false, false, false, v(), None);
-        t("{.test_harness .rust}", false,         false,   false,   true,  true,  false, false, v(), None);
-        t("text, no_run",          false,         true,    false,   false, false, false, false, v(), None);
-        t("text,no_run",           false,         true,    false,   false, false, false, false, v(), None);
-        t("edition2015",           false,         false,   false,   true,  false, false, false, v(), Some(Edition::Edition2015));
-        t("edition2018",           false,         false,   false,   true,  false, false, false, v(), Some(Edition::Edition2018));
+        t("",                      false,         false,   Ignore::None,   true,  false, false, false, v(), None);
+        t("rust",                  false,         false,   Ignore::None,   true,  false, false, false, v(), None);
+        t("sh",                    false,         false,   Ignore::None,   false, false, false, false, v(), None);
+        t("ignore",                false,         false,   Ignore::All,    true,  false, false, false, v(), None);
+        t("should_panic",          true,          false,   Ignore::None,   true,  false, false, false, v(), None);
+        t("no_run",                false,         true,    Ignore::None,   true,  false, false, false, v(), None);
+        t("test_harness",          false,         false,   Ignore::None,   true,  true,  false, false, v(), None);
+        t("compile_fail",          false,         true,    Ignore::None,   true,  false, true,  false, v(), None);
+        t("allow_fail",            false,         false,   Ignore::None,   true,  false, false, true,  v(), None);
+        t("{.no_run .example}",    false,         true,    Ignore::None,   true,  false, false, false, v(), None);
+        t("{.sh .should_panic}",   true,          false,   Ignore::None,   false, false, false, false, v(), None);
+        t("{.example .rust}",      false,         false,   Ignore::None,   true,  false, false, false, v(), None);
+        t("{.test_harness .rust}", false,         false,   Ignore::None,   true,  true,  false, false, v(), None);
+        t("text, no_run",          false,         true,    Ignore::None,   false, false, false, false, v(), None);
+        t("text,no_run",           false,         true,    Ignore::None,   false, false, false, false, v(), None);
+        t("edition2015",           false,         false,   Ignore::None,   true,  false, false, false, v(), Some(Edition::Edition2015));
+        t("edition2018",           false,         false,   Ignore::None,   true,  false, false, false, v(), Some(Edition::Edition2018));
     }
 
     #[test]
