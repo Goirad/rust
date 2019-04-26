@@ -4,6 +4,7 @@
 #![deny(warnings, rust_2018_idioms)]
 
 extern crate test;
+use cargo::util::config::{Config as CargoConfig, Value as CargoValue};
 
 use crate::common::CompareMode;
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
@@ -38,8 +39,18 @@ pub mod util;
 fn main() {
     env_logger::init();
 
-    let config = parse_config(env::args().collect());
+    let mut config = parse_config(env::args().collect());
+    let cargo_config = CargoConfig::default()
+        .expect("could not create default cargo config");
 
+    let key = format!("target.{}.runner", &config.target);
+    match cargo_config.get_path_and_args(&key) {
+        Ok(Some(CargoValue {val: (runner, args), ..})) => {
+            config.runtool = runner.into_os_string().into_string().ok();
+            config.runtool_args = args;
+        },
+        _ => (),
+    }
     if config.valgrind_path.is_none() && config.force_valgrind {
         panic!("Can't find Valgrind to run Valgrind tests");
     }
@@ -130,13 +141,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "exact", "filters match exactly")
-        .optopt(
-            "",
-            "runtool",
-            "supervisor program to run tests under \
-             (eg. emulator, valgrind)",
-            "PROGRAM",
-        )
         .optopt(
             "",
             "host-rustcflags",
@@ -321,7 +325,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         filter: matches.free.first().cloned(),
         filter_exact: matches.opt_present("exact"),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
-        runtool: matches.opt_str("runtool"),
+        runtool: None,
+        runtool_args: vec!(),
         host_rustcflags: matches.opt_str("host-rustcflags"),
         target_rustcflags: matches.opt_str("target-rustcflags"),
         target: target,
@@ -383,6 +388,7 @@ pub fn log_config(config: &Config) {
     );
     logv(c, format!("filter_exact: {}", config.filter_exact));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
+    logv(c, format!("runtool_args: {:?}", &config.runtool_args));
     logv(
         c,
         format!("host-rustcflags: {}", opt_str(&config.host_rustcflags)),

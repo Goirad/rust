@@ -1,6 +1,7 @@
 // run-pass
 // no-prefer-dynamic
 // ignore-emscripten no threads support
+// ignore-sgx no threads support
 
 static mut HIT: bool = false;
 

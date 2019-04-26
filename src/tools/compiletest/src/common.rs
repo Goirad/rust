@@ -190,6 +190,7 @@ pub struct Config {
     /// A command line to prefix program execution with,
     /// for running under valgrind
     pub runtool: Option<String>,
+    pub runtool_args: Vec<String>,
 
     /// Flags to pass to the compiler when building for the host
     pub host_rustcflags: Option<String>,
