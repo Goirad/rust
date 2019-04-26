@@ -1,5 +1,6 @@
 use rustc_data_structures::sync::Lrc;
 use rustc_interface::interface;
+use rustc_target::spec::TargetTriple;
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -27,7 +28,7 @@ use testing;
 
 use crate::clean::Attributes;
 use crate::config::Options;
-use crate::html::markdown::{self, ErrorCodes, LangString};
+use crate::html::markdown::{self, ErrorCodes, LangString, Ignore};
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -43,7 +44,7 @@ pub struct TestOptions {
 pub fn run(options: Options) -> i32 {
     let input = config::Input::File(options.input.clone());
 
-    let sessopts = config::Options {
+    let mut sessopts = config::Options {
         maybe_sysroot: options.maybe_sysroot.clone().or_else(
             || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
         search_paths: options.libs.clone(),
@@ -59,7 +60,7 @@ pub fn run(options: Options) -> i32 {
         edition: options.edition,
         ..config::Options::default()
     };
-
+    options.target.as_ref().map(|t| { sessopts.target_triple = t.clone() });
     let config = interface::Config {
         opts: sessopts,
         crate_cfg: config::parse_cfgspecs(options.cfgs.clone()),
@@ -96,6 +97,9 @@ pub fn run(options: Options) -> i32 {
             options.linker,
             options.edition,
             options.persist_doctests,
+            options.runtool,
+            options.runtool_args,
+            options.target.clone(),
         );
 
         let mut global_ctxt = compiler.global_ctxt()?.take();
@@ -191,6 +195,9 @@ fn run_test(
     should_panic: bool,
     no_run: bool,
     as_test_harness: bool,
+    runtool: Option<String>,
+    runtool_args: Vec<String>,
+    target: Option<TargetTriple>,
     compile_fail: bool,
     mut error_codes: Vec<String>,
     opts: &TestOptions,
@@ -236,6 +243,7 @@ fn run_test(
             ..cg
         },
         test: as_test_harness,
+        target_triple: target.unwrap_or(TargetTriple::from_triple(config::host_triple())),
         unstable_features: UnstableFeatures::from_environment(),
         debugging_opts: config::DebuggingOptions {
             ..config::basic_debugging_options()
@@ -362,7 +370,15 @@ fn run_test(
     }
 
     // Run the code!
-    let mut cmd = Command::new(output_file);
+    let mut cmd;
+
+    if let Some(tool) = runtool {
+        cmd = Command::new(tool);
+        cmd.arg(output_file);
+        cmd.args(runtool_args);
+    }else{
+        cmd = Command::new(output_file);
+    }
 
     match cmd.output() {
         Err(e) => return Err(TestFailure::ExecutionError(e)),
@@ -667,6 +683,9 @@ pub struct Collector {
     linker: Option<PathBuf>,
     edition: Edition,
     persist_doctests: Option<PathBuf>,
+    runtool: Option<String>,
+    runtool_args: Vec<String>,
+    target: Option<TargetTriple>,
 }
 
 impl Collector {
@@ -674,7 +693,8 @@ impl Collector {
                externs: Externs, use_headers: bool, opts: TestOptions,
                maybe_sysroot: Option<PathBuf>, source_map: Option<Lrc<SourceMap>>,
                filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
-               persist_doctests: Option<PathBuf>) -> Collector {
+               persist_doctests: Option<PathBuf>, runtool: Option<String>,
+               runtool_args: Vec<String>, target: Option<TargetTriple>) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -692,6 +712,9 @@ impl Collector {
             linker,
             edition,
             persist_doctests,
+            runtool,
+            runtool_args,
+            target,
         }
     }
 
@@ -736,12 +759,23 @@ impl Tester for Collector {
         let linker = self.linker.clone();
         let edition = config.edition.unwrap_or(self.edition);
         let persist_doctests = self.persist_doctests.clone();
+        let runtool = self.runtool.clone();
+        let runtool_args = self.runtool_args.clone();
+        let target = self.target.clone();
+        let target_str = target.as_ref().map(|t| t.to_string());
 
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
-                name: testing::DynTestName(name),
-                ignore: config.ignore,
+                name: testing::DynTestName(name.clone()),
+                ignore: match config.ignore {
+                    Ignore::All => true,
+                    Ignore::None => false,
+                    Ignore::Some(ref ignores) => {
+                        target_str.map_or(false,
+                                          |s| ignores.iter().any(|t| s.contains(t)))
+                    },
+                },
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
                 allow_fail: config.allow_fail,
@@ -759,6 +793,9 @@ impl Tester for Collector {
                     config.should_panic,
                     config.no_run,
                     config.test_harness,
+                    runtool,
+                    runtool_args,
+                    target,
                     config.compile_fail,
                     config.error_codes,
                     &opts,
