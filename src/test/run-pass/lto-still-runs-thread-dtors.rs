@@ -1,6 +1,7 @@
 // compile-flags: -C lto
 // no-prefer-dynamic
 // ignore-emscripten no threads support
+// ignore-sgx no threads support
 
 use std::thread;
 

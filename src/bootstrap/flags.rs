@@ -63,6 +63,9 @@ pub enum Subcommand {
         fail_fast: bool,
         doc_tests: DocTests,
         rustfix_coverage: bool,
+        // If true, passes the unstable --Zdoctest-xcompile flag
+        // to cargo for crate tests
+        doctest_xcompile: bool,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -204,6 +207,13 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
                     "rustfix-coverage",
                     "enable this to generate a Rustfix coverage file, which is saved in \
                         `/<build_base>/rustfix_missing_coverage.txt`",
+                );
+                opts.optflag(
+                    "",
+                    "doctest-xcompile",
+                    "passes --doctest-xcompile and --enable-per-target-ignores flags\
+                         to cargo, the effect being that doctests are crosscompiled and\
+                         run."
                 );
             }
             "bench" => {
@@ -405,6 +415,7 @@ Arguments:
                 rustc_args: matches.opt_strs("rustc-args"),
                 fail_fast: !matches.opt_present("no-fail-fast"),
                 rustfix_coverage: matches.opt_present("rustfix-coverage"),
+                doctest_xcompile: matches.opt_present("doctest-xcompile"),
                 doc_tests: if matches.opt_present("doc") {
                     DocTests::Only
                 } else if matches.opt_present("no-doc") {

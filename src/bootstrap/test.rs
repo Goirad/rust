@@ -1728,6 +1728,9 @@ impl Step for Crate {
             }
             DocTests::Yes => {}
         }
+        if let Subcommand::Test { doctest_xcompile: true, .. } = builder.config.cmd {
+            cargo.arg("-Zdoctest-xcompile");
+        }
 
         cargo.arg("-p").arg(krate);
 
