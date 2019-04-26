@@ -71,6 +71,7 @@ pub struct Options {
     /// Optional path to persist the doctest executables to, defaults to a
     /// temporary directory if not set.
     pub persist_doctests: Option<PathBuf>,
+    pub runtool: Option<String>,
 
     // Options that affect the documentation process
 
@@ -134,6 +135,7 @@ impl fmt::Debug for Options {
             .field("show_coverage", &self.show_coverage)
             .field("crate_version", &self.crate_version)
             .field("render_options", &self.render_options)
+            .field("runtool", &self.runtool)
             .finish()
     }
 }
@@ -476,6 +478,7 @@ impl Options {
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
+        let runtool = matches.opt_str("runtool");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -503,6 +506,7 @@ impl Options {
             show_coverage,
             crate_version,
             persist_doctests,
+            runtool,
             render_options: RenderOptions {
                 output,
                 external_html,

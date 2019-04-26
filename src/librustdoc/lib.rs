@@ -354,6 +354,17 @@ fn opts() -> Vec<RustcOptGroup> {
                       "show-coverage",
                       "calculate percentage of public items with documentation")
         }),
+        unstable("runtool", |o| {
+            o.optopt("",
+                     "runtool",
+                     "",
+                     "The tool to run the tests with, useful for crosscompiled tests")
+        }),
+        unstable("crosscompile-doctests", |o| {
+           o.optflag("",
+                     "crosscompile-doctests",
+                     "enables crosscompiling doctests")
+        }),
     ]
 }
 

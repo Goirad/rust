@@ -1749,6 +1749,7 @@ impl<'test> TestCx<'test> {
                     && !self.config.host.contains("musl"))
                 || self.config.target.contains("wasm32")
                 || self.config.target.contains("nvptx")
+                || self.config.target.contains("sgx")
             {
                 // We primarily compile all auxiliary libraries as dynamic libraries
                 // to avoid code size bloat and large binaries as much as possible

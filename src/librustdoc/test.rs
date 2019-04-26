@@ -1,5 +1,6 @@
 use rustc_data_structures::sync::Lrc;
 use rustc_interface::interface;
+use rustc_target::spec::TargetTriple;
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -43,7 +44,7 @@ pub struct TestOptions {
 pub fn run(options: Options) -> i32 {
     let input = config::Input::File(options.input.clone());
 
-    let sessopts = config::Options {
+    let mut sessopts = config::Options {
         maybe_sysroot: options.maybe_sysroot.clone().or_else(
             || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
         search_paths: options.libs.clone(),
@@ -59,7 +60,9 @@ pub fn run(options: Options) -> i32 {
         edition: options.edition,
         ..config::Options::default()
     };
-
+    if let Some(trip) = options.target.clone() {
+        sessopts.target_triple = trip;
+    }
     let config = interface::Config {
         opts: sessopts,
         crate_cfg: config::parse_cfgspecs(options.cfgs.clone()),
@@ -96,6 +99,8 @@ pub fn run(options: Options) -> i32 {
             options.linker,
             options.edition,
             options.persist_doctests,
+            options.runtool,
+            options.target.clone(),
         );
 
         let mut global_ctxt = compiler.global_ctxt()?.take();
@@ -191,6 +196,7 @@ fn run_test(
     should_panic: bool,
     no_run: bool,
     as_test_harness: bool,
+    runtool: Option<String>,
     compile_fail: bool,
     mut error_codes: Vec<String>,
     opts: &TestOptions,
@@ -236,6 +242,7 @@ fn run_test(
             ..cg
         },
         test: as_test_harness,
+        target_triple: target.unwrap(),
         unstable_features: UnstableFeatures::from_environment(),
         debugging_opts: config::DebuggingOptions {
             ..config::basic_debugging_options()
@@ -361,9 +368,17 @@ fn run_test(
         return Ok(());
     }
 
-    // Run the code!
-    let mut cmd = Command::new(output_file);
+    if no_run { return }
 
+    let mut cmd;
+
+    if let Some(tool) = runtool {
+        cmd = Command::new(tool);
+        cmd.arg(output_file);
+    }else{
+        cmd = Command::new(output_file);
+    }
+    // Run the code
     match cmd.output() {
         Err(e) => return Err(TestFailure::ExecutionError(e)),
         Ok(out) => {
@@ -667,6 +682,8 @@ pub struct Collector {
     linker: Option<PathBuf>,
     edition: Edition,
     persist_doctests: Option<PathBuf>,
+    runtool: Option<String>,
+    target: Option<TargetTriple>,
 }
 
 impl Collector {
@@ -674,7 +691,8 @@ impl Collector {
                externs: Externs, use_headers: bool, opts: TestOptions,
                maybe_sysroot: Option<PathBuf>, source_map: Option<Lrc<SourceMap>>,
                filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
-               persist_doctests: Option<PathBuf>) -> Collector {
+               persist_doctests: Option<PathBuf>, runtool: Option<String>,
+               target: Option<TargetTriple>) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -692,6 +710,8 @@ impl Collector {
             linker,
             edition,
             persist_doctests,
+            runtool,
+            target,
         }
     }
 
@@ -736,6 +756,8 @@ impl Tester for Collector {
         let linker = self.linker.clone();
         let edition = config.edition.unwrap_or(self.edition);
         let persist_doctests = self.persist_doctests.clone();
+        let runtool = self.runtool.clone();
+        let target = self.target.clone();
 
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
@@ -759,6 +781,8 @@ impl Tester for Collector {
                     config.should_panic,
                     config.no_run,
                     config.test_harness,
+                    runtool,
+                    target,
                     config.compile_fail,
                     config.error_codes,
                     &opts,

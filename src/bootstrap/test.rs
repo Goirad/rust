@@ -223,7 +223,6 @@ impl Step for Cargo {
         if !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }
-
         // Don't run cross-compile tests, we may not have cross-compiled libstd libs
         // available.
         cargo.env("CFG_DISABLE_CROSS_TESTS", "1");
@@ -1311,6 +1310,12 @@ impl Step for Compiletest {
             suite, mode, &compiler.host, target
         ));
         let _time = util::timeit(&builder);
+
+        // If a runtool is specified, it gets passed to compiletest
+        if let Some(tool) = builder.config.cmd.runtool() {
+            cmd.arg("--runtool");
+            cmd.arg(tool);
+        }
         try_run(builder, &mut cmd);
 
         if let Some(compare_mode) = compare_mode {
@@ -1727,6 +1732,9 @@ impl Step for Crate {
                 cargo.args(&["--lib", "--bins", "--examples", "--tests", "--benches"]);
             }
             DocTests::Yes => {}
+        }
+        if builder.config.cmd.crosscompile_doctests() {
+            cargo.arg("--crosscompile-doctests");
         }
 
         cargo.arg("-p").arg(krate);
