@@ -653,9 +653,11 @@ impl LangString {
                 }
                 "ignore" => {
                     data.ignore = Ignore::All;
+                    seen_rust_tags = !seen_other_tags;
                 }
                 x if x.starts_with("ignore-") => {
                     ignores.push(x.trim_start_matches("ignore-").to_owned());
+                    seen_rust_tags = !seen_other_tags;
                 }
                 x if allow_error_code_check && x.starts_with("edition") => {
                     // allow_error_code_check is true if we're on nightly, which
@@ -678,7 +680,6 @@ impl LangString {
             Ignore::All => {},
             Ignore::None => {
                 if !ignores.is_empty() {
-                    dbg!(&ignores);
                     data.ignore = Ignore::Some(ignores);
                 }
             },

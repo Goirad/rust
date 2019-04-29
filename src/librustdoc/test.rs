@@ -341,7 +341,7 @@ fn run_test(
             };
             compiler.session().compile_status()
         })
-    }));//.map_err(|_| ());//.and_then(|s| s.map_err(|_| ()));
+    })).map_err(|_| ()).and_then(|s| s.map_err(|_| ()));
 
     match (compile_result, compile_fail) {
         (Ok(()), true) => {
