@@ -358,12 +358,7 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optopt("",
                      "runtool",
                      "",
-                     "The tool to run the tests with, useful for crosscompiled tests")
-        }),
-        unstable("crosscompile-doctests", |o| {
-           o.optflag("",
-                     "crosscompile-doctests",
-                     "enables crosscompiling doctests")
+                     "The tool to run the tests with when building for a different target than the host")
         }),
     ]
 }

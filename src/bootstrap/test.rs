@@ -223,6 +223,7 @@ impl Step for Cargo {
         if !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }
+
         // Don't run cross-compile tests, we may not have cross-compiled libstd libs
         // available.
         cargo.env("CFG_DISABLE_CROSS_TESTS", "1");
@@ -1732,9 +1733,6 @@ impl Step for Crate {
                 cargo.args(&["--lib", "--bins", "--examples", "--tests", "--benches"]);
             }
             DocTests::Yes => {}
-        }
-        if builder.config.cmd.crosscompile_doctests() {
-            cargo.arg("--crosscompile-doctests");
         }
 
         cargo.arg("-p").arg(krate);

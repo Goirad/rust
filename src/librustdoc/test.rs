@@ -28,7 +28,7 @@ use testing;
 
 use crate::clean::Attributes;
 use crate::config::Options;
-use crate::html::markdown::{self, ErrorCodes, LangString};
+use crate::html::markdown::{self, ErrorCodes, LangString, Ignore};
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -330,7 +330,6 @@ fn run_test(
         crate_name: None,
         lint_caps: Default::default(),
     };
-
     let compile_result = panic::catch_unwind(AssertUnwindSafe(|| {
         interface::run_compiler(config, |compiler| {
             if no_run {
@@ -342,13 +341,13 @@ fn run_test(
             };
             compiler.session().compile_status()
         })
-    })).map_err(|_| ()).and_then(|s| s.map_err(|_| ()));
+    }));//.map_err(|_| ());//.and_then(|s| s.map_err(|_| ()));
 
     match (compile_result, compile_fail) {
         (Ok(()), true) => {
             return Err(TestFailure::UnexpectedCompilePass);
         }
-        (Ok(()), false) => {}
+        (Ok(_), false) => {}
         (Err(_), true) => {
             if !error_codes.is_empty() {
                 let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
@@ -758,12 +757,19 @@ impl Tester for Collector {
         let persist_doctests = self.persist_doctests.clone();
         let runtool = self.runtool.clone();
         let target = self.target.clone();
+        let target_str = target.clone().unwrap().to_string();
 
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
                 name: testing::DynTestName(name.clone()),
-                ignore: config.ignore,
+                ignore: match config.ignore {
+                    Ignore::All => true,
+                    Ignore::None => false,
+                    Ignore::Some(ref ignores) => {
+                        ignores.iter().any(|t| target_str.contains(t))
+                    },
+                },
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
                 allow_fail: config.allow_fail,

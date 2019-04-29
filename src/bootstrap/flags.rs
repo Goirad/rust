@@ -64,7 +64,6 @@ pub enum Subcommand {
         doc_tests: DocTests,
         rustfix_coverage: bool,
         runtool: Option<String>,
-        crosscompile_doctests: bool,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -212,11 +211,6 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
                     "runtool",
                     "RUNNER will be used to run tests, including compiletest and doctest ",
                     "RUNNER",
-                );
-                opts.optflag(
-                    "",
-                    "crosscompile-doctests",
-                    "Whether to allow crosscompiling doctests, usually used in conjunction wiht a runtool",
                 );
             }
             "bench" => {
@@ -426,7 +420,6 @@ Arguments:
                     DocTests::Yes
                 },
                 runtool: matches.opt_str("runtool"),
-                crosscompile_doctests: matches.opt_present("crosscompile-doctests"),
             },
             "bench" => Subcommand::Bench {
                 paths,
@@ -546,15 +539,6 @@ impl Subcommand {
                 ref runtool, ..
             } => runtool.as_ref().map(|s| &s[..]),
             _ => None,
-        }
-    }
-
-    pub fn crosscompile_doctests(&self) -> bool {
-        match *self {
-            Subcommand::Test {
-                crosscompile_doctests, ..
-            } => crosscompile_doctests,
-            _ => false,
         }
     }
 }
