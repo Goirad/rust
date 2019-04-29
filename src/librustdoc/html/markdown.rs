@@ -639,7 +639,14 @@ impl LangString {
                     seen_rust_tags = seen_other_tags == false;
                 }
                 "no_run" => { data.no_run = true; seen_rust_tags = !seen_other_tags; }
-                //"ignore" => { data.ignore = true; seen_rust_tags = !seen_other_tags; }
+                "ignore" => {
+                    data.ignore = Ignore::All;
+                    seen_rust_tags = !seen_other_tags;
+                }
+                x if x.starts_with("ignore-") => {
+                    ignores.push(x.trim_start_matches("ignore-").to_owned());
+                    seen_rust_tags = !seen_other_tags;
+                }
                 "allow_fail" => { data.allow_fail = true; seen_rust_tags = !seen_other_tags; }
                 "rust" => { data.rust = true; seen_rust_tags = true; }
                 "test_harness" => {
@@ -650,14 +657,6 @@ impl LangString {
                     data.compile_fail = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
-                }
-                "ignore" => {
-                    data.ignore = Ignore::All;
-                    seen_rust_tags = !seen_other_tags;
-                }
-                x if x.starts_with("ignore-") => {
-                    ignores.push(x.trim_start_matches("ignore-").to_owned());
-                    seen_rust_tags = !seen_other_tags;
                 }
                 x if allow_error_code_check && x.starts_with("edition") => {
                     // allow_error_code_check is true if we're on nightly, which

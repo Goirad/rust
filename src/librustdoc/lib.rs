@@ -358,7 +358,7 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optopt("",
                      "runtool",
                      "",
-                     "The tool to run the tests with when building for a different target than the host")
+                     "The tool to run tests with when building for a different target than host")
         }),
     ]
 }

@@ -330,6 +330,7 @@ fn run_test(
         crate_name: None,
         lint_caps: Default::default(),
     };
+
     let compile_result = panic::catch_unwind(AssertUnwindSafe(|| {
         interface::run_compiler(config, |compiler| {
             if no_run {
@@ -369,6 +370,7 @@ fn run_test(
 
     if no_run { return }
 
+    // Run the code!
     let mut cmd;
 
     if let Some(tool) = runtool {
@@ -377,7 +379,7 @@ fn run_test(
     }else{
         cmd = Command::new(output_file);
     }
-    // Run the code
+
     match cmd.output() {
         Err(e) => return Err(TestFailure::ExecutionError(e)),
         Ok(out) => {
