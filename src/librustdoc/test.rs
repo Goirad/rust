@@ -242,7 +242,7 @@ fn run_test(
             ..cg
         },
         test: as_test_harness,
-        target_triple: target.unwrap(),
+        target_triple: target.unwrap_or(TargetTriple::from_triple(config::host_triple())),
         unstable_features: UnstableFeatures::from_environment(),
         debugging_opts: config::DebuggingOptions {
             ..config::basic_debugging_options()
@@ -759,7 +759,7 @@ impl Tester for Collector {
         let persist_doctests = self.persist_doctests.clone();
         let runtool = self.runtool.clone();
         let target = self.target.clone();
-        let target_str = target.clone().unwrap().to_string();
+        let target_str = target.as_ref().map(|t| t.to_string());
 
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
@@ -769,7 +769,8 @@ impl Tester for Collector {
                     Ignore::All => true,
                     Ignore::None => false,
                     Ignore::Some(ref ignores) => {
-                        ignores.iter().any(|t| target_str.contains(t))
+                        target_str.map_or(false,
+                                          |s| ignores.iter().any(|t| s.contains(t)))
                     },
                 },
                 // compiler failures are test failures
