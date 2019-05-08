@@ -1930,6 +1930,7 @@ mod __test {
             fail_fast: true,
             doc_tests: DocTests::No,
             bless: false,
+            runtool: None,
             compare_mode: None,
             rustfix_coverage: false,
         };
@@ -1972,6 +1973,7 @@ mod __test {
             fail_fast: true,
             doc_tests: DocTests::No,
             bless: false,
+            runtool: None,
             compare_mode: None,
             rustfix_coverage: false,
         };
