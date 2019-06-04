@@ -71,7 +71,10 @@ pub struct Options {
     /// Optional path to persist the doctest executables to, defaults to a
     /// temporary directory if not set.
     pub persist_doctests: Option<PathBuf>,
+    /// Runtool to run doctests with
     pub runtool: Option<String>,
+    /// Arguments to pass to the runtool
+    pub runtool_args: Vec<String>,
 
     // Options that affect the documentation process
 
@@ -136,6 +139,7 @@ impl fmt::Debug for Options {
             .field("crate_version", &self.crate_version)
             .field("render_options", &self.render_options)
             .field("runtool", &self.runtool)
+            .field("runtool_args", &self.runtool_args)
             .finish()
     }
 }
@@ -479,7 +483,7 @@ impl Options {
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
         let runtool = matches.opt_str("runtool");
-
+        let runtool_args = matches.opt_strs("runtool-arg");
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
         Ok(Options {
@@ -507,6 +511,7 @@ impl Options {
             crate_version,
             persist_doctests,
             runtool,
+            runtool_args,
             render_options: RenderOptions {
                 output,
                 external_html,

@@ -1313,9 +1313,13 @@ impl Step for Compiletest {
         let _time = util::timeit(&builder);
 
         // If a runtool is specified, it gets passed to compiletest
-        if let Some(tool) = builder.config.cmd.runtool() {
+        if let (Some(tool), runtool_args) = builder.config.cmd.runtool() {
             cmd.arg("--runtool");
             cmd.arg(tool);
+            for arg in runtool_args {
+                cmd.arg("--runtool_arg");
+                cmd.arg(arg);
+            }
         }
         try_run(builder, &mut cmd);
 

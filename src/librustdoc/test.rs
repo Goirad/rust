@@ -100,6 +100,7 @@ pub fn run(options: Options) -> i32 {
             options.edition,
             options.persist_doctests,
             options.runtool,
+            options.runtool_args,
             options.target.clone(),
         );
 
@@ -197,6 +198,8 @@ fn run_test(
     no_run: bool,
     as_test_harness: bool,
     runtool: Option<String>,
+    runtool_args: Vec<String>,
+    target: Option<TargetTriple>,
     compile_fail: bool,
     mut error_codes: Vec<String>,
     opts: &TestOptions,
@@ -368,14 +371,15 @@ fn run_test(
         return Ok(());
     }
 
-    if no_run { return }
-
     // Run the code!
     let mut cmd;
 
     if let Some(tool) = runtool {
         cmd = Command::new(tool);
         cmd.arg(output_file);
+        for arg in runtool_args {
+            cmd.arg(arg);
+        }
     }else{
         cmd = Command::new(output_file);
     }
@@ -684,6 +688,7 @@ pub struct Collector {
     edition: Edition,
     persist_doctests: Option<PathBuf>,
     runtool: Option<String>,
+    runtool_args: Vec<String>,
     target: Option<TargetTriple>,
 }
 
@@ -693,7 +698,7 @@ impl Collector {
                maybe_sysroot: Option<PathBuf>, source_map: Option<Lrc<SourceMap>>,
                filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
                persist_doctests: Option<PathBuf>, runtool: Option<String>,
-               target: Option<TargetTriple>) -> Collector {
+               runtool_args: Vec<String>, target: Option<TargetTriple>) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -712,6 +717,7 @@ impl Collector {
             edition,
             persist_doctests,
             runtool,
+            runtool_args,
             target,
         }
     }
@@ -758,6 +764,7 @@ impl Tester for Collector {
         let edition = config.edition.unwrap_or(self.edition);
         let persist_doctests = self.persist_doctests.clone();
         let runtool = self.runtool.clone();
+        let runtool_args = self.runtool_args.clone();
         let target = self.target.clone();
         let target_str = target.as_ref().map(|t| t.to_string());
 
@@ -791,6 +798,7 @@ impl Tester for Collector {
                     config.no_run,
                     config.test_harness,
                     runtool,
+                    runtool_args,
                     target,
                     config.compile_fail,
                     config.error_codes,

@@ -64,6 +64,7 @@ pub enum Subcommand {
         doc_tests: DocTests,
         rustfix_coverage: bool,
         runtool: Option<String>,
+        runtool_args: Vec<String>,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -211,6 +212,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
                     "runtool",
                     "RUNNER will be used to run tests, including compiletest and doctest ",
                     "RUNNER",
+                );
+                opts.optmulti(
+                    "",
+                    "runtool_arg",
+                    "one (of possibly many) arguments to pass to the runtool",
+                    "RUNNER_ARG"
                 );
             }
             "bench" => {
@@ -420,6 +427,7 @@ Arguments:
                     DocTests::Yes
                 },
                 runtool: matches.opt_str("runtool"),
+                runtool_args: matches.opt_strs("runtool_arg"),
             },
             "bench" => Subcommand::Bench {
                 paths,
@@ -533,12 +541,12 @@ impl Subcommand {
         }
     }
 
-    pub fn runtool(&self) -> Option<&str> {
+    pub fn runtool(&self) -> (Option<&str>, &[String]) {
         match *self {
             Subcommand::Test {
-                ref runtool, ..
-            } => runtool.as_ref().map(|s| &s[..]),
-            _ => None,
+                ref runtool, ref runtool_args, ..
+            } => (runtool.as_ref().map(|s| &s[..]), runtool_args.as_ref()),
+            _ => (None, &[]),
         }
     }
 }

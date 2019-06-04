@@ -2056,9 +2056,21 @@ impl<'test> TestCx<'test> {
     }
 
     fn make_run_args(&self) -> ProcArgs {
-        // If we've got another tool to run under (valgrind),
+        // If we've got another tool to run under,
         // then split apart its command
+        // For backwards compatibility with passing the whole valgrind
+        // command with options as a single space separated string,
         let mut args = self.split_maybe_args(&self.config.runtool);
+
+        if args.len() > 1 && !self.config.runtool_args.is_empty(){
+            panic!("It looks like you passed in arguments both through --runtool\
+                    and through --runtool_args. This is only supported for backwards\
+                    compatibility for those using compiletest with valgrind.");
+        } else if args.len() == 1 {
+            // If we are not in a backwards compatibility case, replace args
+            // with those provided by --runtool_args (possibly none)
+            args = self.config.runtool_args.clone();
+        }
 
         // If this is emscripten, then run tests under nodejs
         if self.config.target.contains("emscripten") {
@@ -2091,7 +2103,9 @@ impl<'test> TestCx<'test> {
         // Add the arguments in the run_flags directive
         args.extend(self.split_maybe_args(&self.props.run_flags));
 
-        let prog = args.remove(0);
+        // If there is a runtool, use that
+        // If not, use the first argument, the exe_file
+        let prog = self.config.runtool.clone().unwrap_or_else(|| { args.remove(0) });
         ProcArgs { prog, args }
     }
 

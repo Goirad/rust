@@ -147,7 +147,7 @@ pub fn test(mut options: Options, diag: &errors::Handler) -> i32 {
                                        true, opts, options.maybe_sysroot, None,
                                        Some(options.input),
                                        options.linker, options.edition, options.persist_doctests,
-                                       options.runtool, options.target);
+                                       options.runtool, options.runtool_args, options.target);
     collector.set_position(DUMMY_SP);
     let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
 

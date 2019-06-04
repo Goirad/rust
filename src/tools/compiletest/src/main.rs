@@ -137,6 +137,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
              (eg. emulator, valgrind)",
             "PROGRAM",
         )
+        .optmulti("",
+                  "runtool_arg",
+                  "argument to be passed to the runtool",
+                  "RUNTOOL_ARG"
+        )
         .optopt(
             "",
             "host-rustcflags",
@@ -322,6 +327,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         filter_exact: matches.opt_present("exact"),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
+        runtool_args: matches.opt_strs("runtool_arg"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
         target_rustcflags: matches.opt_str("target-rustcflags"),
         target: target,
@@ -383,6 +389,7 @@ pub fn log_config(config: &Config) {
     );
     logv(c, format!("filter_exact: {}", config.filter_exact));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
+    logv(c, format!("runtool_args: {:?}", &config.runtool_args));
     logv(
         c,
         format!("host-rustcflags: {}", opt_str(&config.host_rustcflags)),
