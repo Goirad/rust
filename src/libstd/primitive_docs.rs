@@ -415,7 +415,7 @@ mod prim_unit { }
 ///
 /// ## 3. Get it from C.
 ///
-/// ```
+/// ```ignore-sgx
 /// # #![feature(rustc_private)]
 /// extern crate libc;
 ///
