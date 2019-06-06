@@ -100,6 +100,7 @@ pub fn run(options: Options) -> i32 {
             options.runtool,
             options.runtool_args,
             options.target.clone(),
+            options.enable_per_target_ignores,
         );
 
         let mut global_ctxt = compiler.global_ctxt()?.take();
@@ -376,7 +377,7 @@ fn run_test(
         cmd = Command::new(tool);
         cmd.arg(output_file);
         cmd.args(runtool_args);
-    }else{
+    } else {
         cmd = Command::new(output_file);
     }
 
@@ -686,6 +687,7 @@ pub struct Collector {
     runtool: Option<String>,
     runtool_args: Vec<String>,
     target: Option<TargetTriple>,
+    pub enable_per_target_ignores: bool,
 }
 
 impl Collector {
@@ -694,7 +696,8 @@ impl Collector {
                maybe_sysroot: Option<PathBuf>, source_map: Option<Lrc<SourceMap>>,
                filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
                persist_doctests: Option<PathBuf>, runtool: Option<String>,
-               runtool_args: Vec<String>, target: Option<TargetTriple>) -> Collector {
+               runtool_args: Vec<String>, target: Option<TargetTriple>,
+               enable_per_target_ignores: bool) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -715,6 +718,7 @@ impl Collector {
             runtool,
             runtool_args,
             target,
+            enable_per_target_ignores,
         }
     }
 
@@ -945,7 +949,10 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         // anything else, this will combine them for us.
         if let Some(doc) = attrs.collapsed_doc_value() {
             self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
-            markdown::find_testable_code(&doc, self.collector, self.codes);
+            markdown::find_testable_code(&doc,
+                                         self.collector,
+                                         self.codes,
+                                         self.collector.enable_per_target_ignores);
         }
 
         nested(self);

@@ -75,6 +75,10 @@ pub struct Options {
     pub runtool: Option<String>,
     /// Arguments to pass to the runtool
     pub runtool_args: Vec<String>,
+    /// Whether to allow ignoring doctests on a per-target basis
+    /// For example, using ignore-foo to ignore running the doctest on any target that
+    /// contains "foo" as a substring
+    pub enable_per_target_ignores: bool,
 
     // Options that affect the documentation process
 
@@ -140,6 +144,7 @@ impl fmt::Debug for Options {
             .field("render_options", &self.render_options)
             .field("runtool", &self.runtool)
             .field("runtool_args", &self.runtool_args)
+            .field("enable-per-target-ignores", &self.enable_per_target_ignores)
             .finish()
     }
 }
@@ -484,6 +489,7 @@ impl Options {
         let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
         let runtool = matches.opt_str("runtool");
         let runtool_args = matches.opt_strs("runtool-arg");
+        let enable_per_target_ignores = matches.opt_present("enable-per-target-ignores");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -513,6 +519,7 @@ impl Options {
             persist_doctests,
             runtool,
             runtool_args,
+            enable_per_target_ignores,
             render_options: RenderOptions {
                 output,
                 external_html,
