@@ -9,7 +9,7 @@ use rustc::lint::Level;
 use rustc::session::early_error;
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
-                             get_cmd_lint_options, ExternEntry};
+                             get_cmd_lint_options, host_triple, ExternEntry};
 use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
@@ -46,7 +46,7 @@ pub struct Options {
     /// Debugging (`-Z`) options to pass to the compiler.
     pub debugging_options: DebuggingOptions,
     /// The target used to compile the crate against.
-    pub target: Option<TargetTriple>,
+    pub target: TargetTriple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
     /// compiling doctests from the crate.
     pub edition: Edition,
@@ -446,7 +446,9 @@ impl Options {
             }
         }
 
-        let target = matches.opt_str("target").map(|target| {
+        let target = matches.opt_str("target").map_or(
+            TargetTriple::from_triple(host_triple()),
+            |target| {
             if target.ends_with(".json") {
                 TargetTriple::TargetPath(PathBuf::from(target))
             } else {

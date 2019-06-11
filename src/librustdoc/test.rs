@@ -44,7 +44,7 @@ pub struct TestOptions {
 pub fn run(options: Options) -> i32 {
     let input = config::Input::File(options.input.clone());
 
-    let mut sessopts = config::Options {
+    let sessopts = config::Options {
         maybe_sysroot: options.maybe_sysroot.clone().or_else(
             || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
         search_paths: options.libs.clone(),
@@ -60,7 +60,6 @@ pub fn run(options: Options) -> i32 {
         edition: options.edition,
         ..config::Options::default()
     };
-    options.target.as_ref().map(|t| { sessopts.target_triple = t.clone() });
     let config = interface::Config {
         opts: sessopts,
         crate_cfg: config::parse_cfgspecs(options.cfgs.clone()),
@@ -198,7 +197,7 @@ fn run_test(
     as_test_harness: bool,
     runtool: Option<String>,
     runtool_args: Vec<String>,
-    target: Option<TargetTriple>,
+    target: TargetTriple,
     compile_fail: bool,
     mut error_codes: Vec<String>,
     opts: &TestOptions,
@@ -244,7 +243,7 @@ fn run_test(
             ..cg
         },
         test: as_test_harness,
-        target_triple: target.unwrap_or(TargetTriple::from_triple(config::host_triple())),
+        target_triple: target,
         unstable_features: UnstableFeatures::from_environment(),
         debugging_opts: config::DebuggingOptions {
             ..config::basic_debugging_options()
@@ -686,7 +685,7 @@ pub struct Collector {
     persist_doctests: Option<PathBuf>,
     runtool: Option<String>,
     runtool_args: Vec<String>,
-    target: Option<TargetTriple>,
+    target: TargetTriple,
     pub enable_per_target_ignores: bool,
 }
 
@@ -696,7 +695,7 @@ impl Collector {
                maybe_sysroot: Option<PathBuf>, source_map: Option<Lrc<SourceMap>>,
                filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
                persist_doctests: Option<PathBuf>, runtool: Option<String>,
-               runtool_args: Vec<String>, target: Option<TargetTriple>,
+               runtool_args: Vec<String>, target: TargetTriple,
                enable_per_target_ignores: bool) -> Collector {
         Collector {
             tests: Vec::new(),
@@ -766,7 +765,7 @@ impl Tester for Collector {
         let runtool = self.runtool.clone();
         let runtool_args = self.runtool_args.clone();
         let target = self.target.clone();
-        let target_str = target.as_ref().map(|t| t.to_string());
+        let target_str = target.to_string();
 
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
@@ -776,8 +775,7 @@ impl Tester for Collector {
                     Ignore::All => true,
                     Ignore::None => false,
                     Ignore::Some(ref ignores) => {
-                        target_str.map_or(false,
-                                          |s| ignores.iter().any(|t| s.contains(t)))
+                        ignores.iter().any(|s| target_str.contains(s))
                     },
                 },
                 // compiler failures are test failures
